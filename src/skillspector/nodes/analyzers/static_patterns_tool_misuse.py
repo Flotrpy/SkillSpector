@@ -3058,12 +3058,18 @@ def _powershell_shell_text(content: str, check_runtime: Callable[[], None]) -> s
             if not segment.owns_messages():
                 continue
             for start, end, holes in segment.strings:
-                cursor = start
+                if not holes:
+                    masked.append((start, end))
+                    continue
+                # Keep each subexpression, including its ``$(`` and ``)``, and
+                # the string's own delimiters, so the subexpression keeps the
+                # quoted context its existing proofs (such as -replace) need.
+                delimiter = 2 if content[start] == "@" else 1
+                cursor = start + delimiter
                 for hole_start, hole_end in holes:
-                    # Keep each subexpression, including its ``$(`` and ``)``.
                     masked.append((cursor, hole_start))
                     cursor = hole_end
-                masked.append((cursor, end))
+                masked.append((cursor, end - delimiter))
     for start, end in masked:
         check_runtime()
         for index in range(start, end):
